@@ -1,0 +1,19 @@
+apply plugin: 'java'
+compileJava {
+    sourceCompatibility = 1.6
+    targetCompatibility = 1.6
+}
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+dependencies {
+    testCompile 'org.mockito:mockito-all:1.9.5'
+    testCompile "junit:junit:4.10"
+}
+
+task copyTestResources(type: Copy) {
+    from "${projectDir}/src/test/resources"
+    into "${buildDir}/classes/test"
+}
+processTestResources.dependsOn copyTestResources

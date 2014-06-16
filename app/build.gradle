@@ -1,0 +1,27 @@
+apply plugin: 'android'
+
+android {
+    compileSdkVersion 17
+    buildToolsVersion "19.1.0"
+
+    defaultConfig {
+        packageName "com.kircherelectronics.lowpasslinearacceleration"
+        minSdkVersion 11
+        targetSdkVersion 19
+    }
+
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+}
+
+dependencies {
+    compile project(':Pedometer')
+    compile 'com.android.support:support-v4:+'
+    compile files('libs/androidplot-core-0.5.2.jar')
+    compile files('libs/commons-math3-3.0.jar')
+}
+
