@@ -19,9 +19,6 @@ local.properties
 .classpath
 .project
 
-# imported code
-libs/
-
 # Gedit temp files
 *~
 

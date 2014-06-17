@@ -5,7 +5,7 @@ android {
     buildToolsVersion "19.1.0"
 
     defaultConfig {
-        packageName "com.kircherelectronics.lowpasslinearacceleration"
+        applicationId "com.kircherelectronics.lowpasslinearacceleration"
         minSdkVersion 11
         targetSdkVersion 19
     }

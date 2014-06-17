@@ -23,8 +23,8 @@ import static org.junit.Assert.assertThat;
 public class PedometerTest {
 	@Test
 	public void shouldParseFile() throws IOException {
-		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-2014-2-8-8-47-27.csv");
-		assertEquals(306,arrAccelerationInfo.size());
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-25hz-50steg.csv");
+		assertEquals(366,arrAccelerationInfo.size());
 	}
 
 	private List<AccelerationInfo> readFile(String fileName) throws IOException {
@@ -85,11 +85,11 @@ public class PedometerTest {
 	@Test
 	public void runFile2() throws IOException {
 		Pedometer pedometer = new Pedometer();
-		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-60-40ms.csv");
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-25hz-50steg.csv");
 		for(AccelerationInfo info : arrAccelerationInfo){
 			pedometer.onInput(info);
 		}
-		assertThat(pedometer.getSteps(), is(equalTo(3)));
+		assertThat(pedometer.getSteps(), is(equalTo(50)));
 	}
 
 }

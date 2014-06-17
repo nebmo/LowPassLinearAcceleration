@@ -25,7 +25,7 @@ import nebmo.pedometer.Pedometer;
  * Created by niklas.weidemann on 2014-06-17.
  */
 public class StepCounterService extends Service implements StepCounterInteractor {
-	private long _sensorEventTime;
+	private long _lastPublishedSensoreventTime;
 	public AccelerationInfo _sensorInfo;
 	private int _eventFrequency = 25;
 	private final Set<OnStepsCountedListener> mListeners = new HashSet<OnStepsCountedListener>();
@@ -90,8 +90,6 @@ public class StepCounterService extends Service implements StepCounterInteractor
 	private SensorEventListener mSensorEventListener = new SensorEventListener() {
 		@Override
 		public void onSensorChanged(SensorEvent event) {
-			long lastSensorTime = _sensorEventTime;
-			_sensorEventTime = System.currentTimeMillis();
 			System.arraycopy(event.values, 0, acceleration, 0, event.values.length);
 
 			acceleration[0] = acceleration[0] / SensorManager.GRAVITY_EARTH;
@@ -108,9 +106,9 @@ public class StepCounterService extends Service implements StepCounterInteractor
 			_sensorInfo.wx = lpfWikiOutput[0];
 			_sensorInfo.wy = lpfWikiOutput[1];
 			_sensorInfo.wz = lpfWikiOutput[2];
-			_sensorInfo.time = _sensorEventTime;
+			_sensorInfo.time = event.timestamp / 1000000;
 
-			if(_sensorEventTime - lastSensorTime > (1000/_eventFrequency )){
+			if(event.timestamp - _lastPublishedSensoreventTime > (1000000000/_eventFrequency )){
 				_pedometer.onInput(_sensorInfo);
 				notifySensorChanged();
 				int steps = _pedometer.getSteps();
@@ -118,6 +116,8 @@ public class StepCounterService extends Service implements StepCounterInteractor
 					mStepsCounted = steps;
 					notifyStepsChanged();
 				}
+
+                _lastPublishedSensoreventTime = event.timestamp;
 			}
 		}
 
