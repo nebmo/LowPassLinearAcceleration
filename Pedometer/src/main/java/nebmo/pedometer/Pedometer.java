@@ -28,7 +28,7 @@ public class Pedometer implements IPedometer {
 
 	@Override
 	public void onInput(AccelerationInfo info){
-		double value = info.z;
+		double value = info.x;
 		if(new_value[0] > max_value)
 			max_value = new_value[0];
 		if(new_value[0] < min_value)

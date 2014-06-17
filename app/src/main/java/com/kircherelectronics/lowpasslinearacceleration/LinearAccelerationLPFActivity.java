@@ -19,6 +19,8 @@ import com.kircherelectronics.lowpasslinearacceleration.gauge.GaugeRotationHolo;
 import com.kircherelectronics.lowpasslinearacceleration.plot.DynamicLinePlot;
 import com.kircherelectronics.lowpasslinearacceleration.plot.PlotColor;
 
+import android.content.ComponentName;
+import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -34,6 +36,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -103,9 +106,7 @@ import nebmo.pedometer.Pedometer;
  * @author Kaleb
  * @version %I%, %G%
  */
-public class LinearAccelerationLPFActivity extends Activity implements
-		SensorEventListener, Runnable, OnTouchListener
-{
+public class LinearAccelerationLPFActivity extends Activity implements Runnable, OnTouchListener, OnStepsCountedListener {
 
 	// The static alpha for the LPF Wikipedia
 	private static float WIKI_STATIC_ALPHA = 0.1f;
@@ -147,11 +148,6 @@ public class LinearAccelerationLPFActivity extends Activity implements
 	// Indicate if the output should be logged to a .csv file
 	private boolean logData = false;
 
-	// Indicate if a static alpha should be used for the LPF Wikipedia
-	private boolean staticWikiAlpha = false;
-
-	// Indicate if a static alpha should be used for the LPF Android Developer
-	private boolean staticAndDevAlpha = false;
 
 	// Decimal formats for the UI outputs
 	private DecimalFormat df;
@@ -164,10 +160,7 @@ public class LinearAccelerationLPFActivity extends Activity implements
 	private float distance = 0;
 	private float zoom = 1.2f;
 
-	// Outputs for the acceleration and LPFs
-	private float[] acceleration = new float[3];
-	private float[] lpfWikiOutput = new float[4];
-	private float[] lpfAndDevOutput = new float[3];
+	AccelerationInfo _accelerationInfo = new AccelerationInfo();
 
 	// The Acceleration Gauge
 	private GaugeRotationHolo gaugeAccelerationTilt;
@@ -248,9 +241,9 @@ public class LinearAccelerationLPFActivity extends Activity implements
 	private TextView zAxis;
 	private TextView vSteps;
 	private Pedometer _pedometer;
-	private int _steps;
+	private long _steps;
 	private int _postCount;
-
+	private StepCounterInteractor mInteractor;
 	/**
 	 * Get the sample window size for the standard deviation.
 	 * 
@@ -271,58 +264,79 @@ public class LinearAccelerationLPFActivity extends Activity implements
 		// Read in the saved prefs
 		readPrefs();
 
-		// Get the sensor manager ready
-		sensorManager = (SensorManager) this
-				.getSystemService(Context.SENSOR_SERVICE);
 
 		initTextViewOutputs();
 
 		initIcons();
 
-		initFilters();
-
 		// Initialize the plots
 		initColor();
 		initPlots();
 		initGauges();
-		initPedometer();
-
+		initService();
 		handler = new Handler();
 	}
 
-	private void initPedometer() {
-		_pedometer = new Pedometer();
+	private void initService() {
+		final Intent intent = new Intent(this, StepCounterService.class);
+		bindService(intent, mServiceConnection, BIND_AUTO_CREATE);
 	}
+
+	private ServiceConnection mServiceConnection = new ServiceConnection() {
+		@Override
+		public void onServiceConnected(ComponentName name, IBinder service) {
+			final StepCounterService.StepServiceBinder binder = (StepCounterService.StepServiceBinder) service;
+			mInteractor = binder.getStepInteractor();
+			mInteractor.registerOnStepsCountedListener(LinearAccelerationLPFActivity.this);
+			mInteractor.startListening();
+			invalidateOptionsMenu();
+		}
+
+		@Override
+		public void onServiceDisconnected(ComponentName name) {
+			mInteractor = null;
+		}
+	};
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+
+		unbindService(mServiceConnection);
+	}
+
 
 	@Override
 	public void onPause()
 	{
 		super.onPause();
 
-		sensorManager.unregisterListener(this);
-
 		if (logData)
 		{
 			writeLogToFile();
 		}
-
+		if(mInteractor != null) {
+			mInteractor.unregisterOnStepsCountedListener(this);
+		}
 		handler.removeCallbacks(this);
 	}
 
+
 	@Override
-	public void onSensorChanged(SensorEvent event)
+	public void onResume()
 	{
-		// Get a local copy of the sensor values
-		System.arraycopy(event.values, 0, acceleration, 0, event.values.length);
+		super.onResume();
 
-		acceleration[0] = acceleration[0] / SensorManager.GRAVITY_EARTH;
-		acceleration[1] = acceleration[1] / SensorManager.GRAVITY_EARTH;
-		acceleration[2] = acceleration[2] / SensorManager.GRAVITY_EARTH;
+		readPrefs();
 
-		lpfWikiOutput = lpfWiki.addSamples(acceleration);
-		lpfAndDevOutput = lpfAndDev.addSamples(acceleration);
+		handler.post(this);
+
+		if(mInteractor != null) {
+			mInteractor.registerOnStepsCountedListener(this);
+			if(!mInteractor.isListening())
+				mInteractor.startListening();
+		}
 	}
-
 
 	/**
 	 * Output and logs are run on their own thread to keep the UI from hanging
@@ -331,24 +345,11 @@ public class LinearAccelerationLPFActivity extends Activity implements
 	@Override
 	public void run()
 	{
-		long t1 = System.currentTimeMillis();
 
-		logData();
 		plotData();
 		updateTextViewOutputs();
-		AccelerationInfo info = new AccelerationInfo();
-		//acceleration
 
-		info.x = lpfWikiOutput[0];
-		info.y = lpfWikiOutput[1];
-		info.z = lpfWikiOutput[2];
-		info.time = System.currentTimeMillis();
-		_pedometer.onInput(info);
-
-		_steps = _pedometer.getSteps();
-		long t2 = System.currentTimeMillis();
-		if(t2-t1 < 40)
-			handler.postDelayed(this, 40 - (t2-t1));
+		handler.postDelayed(this, 100);
 	}
 
 	/**
@@ -360,47 +361,25 @@ public class LinearAccelerationLPFActivity extends Activity implements
 		{
 			if (generation == 0)
 			{
-				logTime = System.currentTimeMillis();
+				logTime = _accelerationInfo.time;
 			}
 
 			log += System.getProperty("line.separator");
 			log += generation++ + ",";
-			log += System.currentTimeMillis() - logTime + ",";
+			log += _accelerationInfo.time - logTime + ",";
 
-			log += acceleration[0] + ",";
-			log += acceleration[1] + ",";
-			log += acceleration[2] + ",";
+			log += _accelerationInfo.x + ",";
+			log += _accelerationInfo.y + ",";
+			log += _accelerationInfo.z + ",";
 
-			log += lpfWikiOutput[0] + ",";
-			log += lpfWikiOutput[1] + ",";
-			log += lpfWikiOutput[2] + ",";
+			log += _accelerationInfo.wx + ",";
+			log += _accelerationInfo.wy + ",";
+			log += _accelerationInfo.wz + ",";
 
-			log += lpfAndDevOutput[0] + ",";
-			log += lpfAndDevOutput[1] + ",";
-			log += lpfAndDevOutput[2] + ",";
+			log += _accelerationInfo.adx + ",";
+			log += _accelerationInfo.ady + ",";
+			log += _accelerationInfo.adz + ",";
 		}
-	}
-
-	@Override
-	public void onResume()
-	{
-		super.onResume();
-
-		readPrefs();
-
-		handler.post(this);
-
-		// Register for sensor updates.
-		sensorManager.registerListener(this,
-				sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-				SensorManager.SENSOR_DELAY_FASTEST);
-	}
-
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy)
-	{
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -634,22 +613,7 @@ public class LinearAccelerationLPFActivity extends Activity implements
 		plotLPFAndDevZAxisColor = color.getLightRed();
 	}
 
-	/**
-	 * Initialize the filters.
-	 */
-	private void initFilters()
-	{
-		// Create the low-pass filters
-		lpfWiki = new LPFWikipedia();
-		lpfAndDev = new LPFAndroidDeveloper();
 
-		// Initialize the low-pass filters with the saved prefs
-		lpfWiki.setAlphaStatic(staticWikiAlpha);
-		lpfWiki.setAlpha(WIKI_STATIC_ALPHA);
-
-		lpfAndDev.setAlphaStatic(staticAndDevAlpha);
-		lpfAndDev.setAlpha(AND_DEV_STATIC_ALPHA);
-	}
 
 	/**
 	 * Create the RMS Noise bar chart.
@@ -812,13 +776,13 @@ public class LinearAccelerationLPFActivity extends Activity implements
 	 */
 	private void plotData()
 	{
-		dynamicPlot.setData(lpfWikiOutput[3], PLOT_LPF_WIKI_T_AXIS_KEY);
+		//dynamicPlot.setData(lpfWikiOutput[3], PLOT_LPF_WIKI_T_AXIS_KEY);
 		//dynamicPlot.setData(lpfAndDevOutput[3], PLOT_LPF_AND_DEV_T_AXIS_KEY);
-//		dynamicPlot.setData(acceleration[0], PLOT_ACCEL_X_AXIS_KEY);
+		dynamicPlot.setData(_accelerationInfo.x, PLOT_ACCEL_X_AXIS_KEY);
 //		dynamicPlot.setData(acceleration[1], PLOT_ACCEL_Y_AXIS_KEY);
 //		dynamicPlot.setData(acceleration[2], PLOT_ACCEL_Z_AXIS_KEY);
 //
-		gaugeAccelerationTilt.updateRotation(acceleration);
+		gaugeAccelerationTilt.updateRotation(new float[]{(float) _accelerationInfo.x, (float) _accelerationInfo.y, (float) _accelerationInfo.z});
 //
 //		gaugeAcceleration.updatePoint(acceleration[0]
 //				* SensorManager.GRAVITY_EARTH, acceleration[1]
@@ -826,30 +790,30 @@ public class LinearAccelerationLPFActivity extends Activity implements
 
 		if (plotLPFWikiReady)
 		{
-			dynamicPlot.setData(lpfWikiOutput[0], PLOT_LPF_WIKI_X_AXIS_KEY);
-			dynamicPlot.setData(lpfWikiOutput[1], PLOT_LPF_WIKI_Y_AXIS_KEY);
-			dynamicPlot.setData(lpfWikiOutput[2], PLOT_LPF_WIKI_Z_AXIS_KEY);
+			dynamicPlot.setData(_accelerationInfo.wx, PLOT_LPF_WIKI_X_AXIS_KEY);
+			dynamicPlot.setData(_accelerationInfo.wy, PLOT_LPF_WIKI_Y_AXIS_KEY);
+			dynamicPlot.setData(_accelerationInfo.wz, PLOT_LPF_WIKI_Z_AXIS_KEY);
 
-			gaugeLPFWikiTilt.updateRotation(lpfWikiOutput);
+			gaugeLPFWikiTilt.updateRotation(new float[]{(float) _accelerationInfo.wx, (float) _accelerationInfo.wy, (float) _accelerationInfo.wz});
 
-			gaugeLPFWikiAcceleration.updatePoint(lpfWikiOutput[0]
-					* SensorManager.GRAVITY_EARTH, lpfWikiOutput[1]
+			gaugeLPFWikiAcceleration.updatePoint((float)_accelerationInfo.wx
+					* SensorManager.GRAVITY_EARTH, (float)_accelerationInfo.wy
 					* SensorManager.GRAVITY_EARTH, Color.parseColor("#33b5e5"));
 		}
 
 		if (plotLPFAndDevReady)
 		{
 			dynamicPlot
-					.setData(lpfAndDevOutput[0], PLOT_LPF_AND_DEV_X_AXIS_KEY);
+					.setData(_accelerationInfo.adx, PLOT_LPF_AND_DEV_X_AXIS_KEY);
 			dynamicPlot
-					.setData(lpfAndDevOutput[1], PLOT_LPF_AND_DEV_Y_AXIS_KEY);
+					.setData(_accelerationInfo.ady, PLOT_LPF_AND_DEV_Y_AXIS_KEY);
 			dynamicPlot
-					.setData(lpfAndDevOutput[2], PLOT_LPF_AND_DEV_Z_AXIS_KEY);
+					.setData(_accelerationInfo.adz, PLOT_LPF_AND_DEV_Z_AXIS_KEY);
 
-			gaugeLPFAndDevTilt.updateRotation(lpfAndDevOutput);
+			gaugeLPFAndDevTilt.updateRotation(new float[]{(float) _accelerationInfo.adx, (float) _accelerationInfo.ady, (float) _accelerationInfo.adz});
 
-			gaugeLPFAndDevAcceleration.updatePoint(lpfAndDevOutput[0]
-					* SensorManager.GRAVITY_EARTH, lpfAndDevOutput[1]
+			gaugeLPFAndDevAcceleration.updatePoint((float)_accelerationInfo.adx
+					* SensorManager.GRAVITY_EARTH, (float)_accelerationInfo.ady
 					* SensorManager.GRAVITY_EARTH, Color.parseColor("#33b5e5"));
 		}
 
@@ -860,9 +824,9 @@ public class LinearAccelerationLPFActivity extends Activity implements
 	private void updateTextViewOutputs()
 	{
 		// Update the view with the new acceleration data
-		xAxis.setText(df.format(acceleration[0]));
-		yAxis.setText(df.format(acceleration[1]));
-		zAxis.setText(df.format(acceleration[2]));
+		xAxis.setText(df.format(_accelerationInfo.x));
+		yAxis.setText(df.format(_accelerationInfo.y));
+		zAxis.setText(df.format(_accelerationInfo.wz));
 		vSteps.setText(_steps+"");
 	}
 
@@ -958,9 +922,18 @@ public class LinearAccelerationLPFActivity extends Activity implements
 
 		this.plotLPFAndDev = prefs.getBoolean("plot_lpf_and_dev", false);
 		this.plotLPFWiki = prefs.getBoolean("plot_lpf_wiki", false);
+	}
 
-		WIKI_STATIC_ALPHA = prefs.getFloat("lpf_wiki_alpha", 0.1f);
-		AND_DEV_STATIC_ALPHA = prefs.getFloat("lpf_and_dev_alpha", 0.9f);
+	@Override
+	public void onStepsCounted(StepCounterInteractor listener) {
+		_steps = listener.getCountedSteps();
+	}
+
+	@Override
+	public void onSensorChanged(StepCounterInteractor listener) {
+		 _accelerationInfo = listener.getAccelerationInfo();
+		logData();
+		//_steps = listener.getCountedSteps();
 	}
 
 	/**

@@ -15,7 +15,9 @@ public class AccelerationInfo
 	public double ady;
 	public double adz;
 	public double adv;
-
+	public double gx;
+	public double gy;
+	public double gz;
 	public static AccelerationInfo tryParse(String info){
 		String[] result = info.split(",");
 		AccelerationInfo aInfo = new AccelerationInfo();
