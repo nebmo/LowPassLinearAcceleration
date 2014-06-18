@@ -85,11 +85,11 @@ public class PedometerTest {
 	@Test
 	public void runFile2() throws IOException {
 		Pedometer pedometer = new Pedometer();
-		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-25hz-50steg.csv");
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-brallan-60steg.csv");
 		for(AccelerationInfo info : arrAccelerationInfo){
 			pedometer.onInput(info);
 		}
-		assertThat(pedometer.getSteps(), is(equalTo(50)));
+		assertThat(pedometer.getSteps(), is(equalTo(60)));
 	}
 
 }
