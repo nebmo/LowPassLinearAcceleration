@@ -65,13 +65,13 @@
                             android:id="@+id/table_statistics_left_row_0"
                             android:layout_width="fill_parent"
                             android:layout_height="wrap_content"
-                            android:padding="2dip" >
+                            android:padding="2dip">
 
                             <RelativeLayout
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginRight="20dp"
-                                android:layout_weight="1" >
+                                android:layout_weight="1" android:visibility="gone">
 
                                 <TextView
                                     android:id="@+id/label_x_axis"
@@ -95,7 +95,7 @@
                             <RelativeLayout
                                 android:layout_width="fill_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_weight="1" >
+                                android:layout_weight="1" android:visibility="gone">
 
                                 <TextView
                                     android:id="@+id/label_y_axis"
@@ -120,7 +120,7 @@
                                 android:layout_width="fill_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginLeft="20dp"
-                                android:layout_weight="1" >
+                                android:layout_weight="1" android:visibility="gone">
 
                                 <TextView
                                     android:id="@+id/label_z_axis"
@@ -160,6 +160,54 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_toRightOf="@+id/label_steps"
+                                    android:fontFamily="sans-serif-condensed"
+                                    android:text="0"
+                                    android:textAppearance="?android:attr/textAppearanceMedium" />
+                            </RelativeLayout>
+                            <RelativeLayout
+                                android:layout_width="fill_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginLeft="20dp"
+                                android:layout_weight="1">
+
+                                <TextView
+                                    android:id="@+id/label_steps_avg"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_alignParentLeft="true"
+                                    android:fontFamily="sans-serif-condensed"
+                                    android:text="S_AVG:"
+                                    android:textAppearance="?android:attr/textAppearanceMedium" />
+
+                                <TextView
+                                    android:id="@+id/value_steps_avg"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_toRightOf="@+id/label_steps_avg"
+                                    android:fontFamily="sans-serif-condensed"
+                                    android:text="0"
+                                    android:textAppearance="?android:attr/textAppearanceMedium" />
+                            </RelativeLayout>
+                            <RelativeLayout
+                                android:layout_width="fill_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginLeft="20dp"
+                                android:layout_weight="1" >
+
+                                <TextView
+                                    android:id="@+id/label_steps_curr"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_alignParentLeft="true"
+                                    android:fontFamily="sans-serif-condensed"
+                                    android:text="S_CURR:"
+                                    android:textAppearance="?android:attr/textAppearanceMedium" />
+
+                                <TextView
+                                    android:id="@+id/value_steps_curr"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_toRightOf="@+id/label_steps_curr"
                                     android:fontFamily="sans-serif-condensed"
                                     android:text="0"
                                     android:textAppearance="?android:attr/textAppearanceMedium" />

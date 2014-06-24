@@ -244,6 +244,11 @@ public class LinearAccelerationLPFActivity extends Activity implements Runnable,
 	private long _steps;
 	private int _postCount;
 	private StepCounterInteractor mInteractor;
+	private TextView currSteps;
+	private int _cadense;
+	private int _avgCadense;
+	private TextView avgSteps;
+
 	/**
 	 * Get the sample window size for the standard deviation.
 	 * 
@@ -676,6 +681,8 @@ public class LinearAccelerationLPFActivity extends Activity implements Runnable,
 		yAxis = (TextView) findViewById(R.id.value_y_axis);
 		zAxis = (TextView) findViewById(R.id.value_z_axis);
 		vSteps = (TextView) findViewById(R.id.value_steps);
+		currSteps = (TextView) findViewById(R.id.value_steps_curr);
+		avgSteps = (TextView) findViewById(R.id.value_steps_avg);
 		// Format the UI outputs so they look nice
 		df = new DecimalFormat("#.##");
 		dfLong = new DecimalFormat("#.####");
@@ -828,6 +835,8 @@ public class LinearAccelerationLPFActivity extends Activity implements Runnable,
 		yAxis.setText(df.format(_accelerationInfo.y));
 		zAxis.setText(df.format(_accelerationInfo.wz));
 		vSteps.setText(_steps+"");
+		currSteps.setText(_cadense + "");
+		avgSteps.setText(_avgCadense + "");
 	}
 
 
@@ -927,6 +936,8 @@ public class LinearAccelerationLPFActivity extends Activity implements Runnable,
 	@Override
 	public void onStepsCounted(StepCounterInteractor listener) {
 		_steps = listener.getCountedSteps();
+		_cadense = listener.getCadense();
+		_avgCadense = listener.getAvgCadense();
 	}
 
 	@Override

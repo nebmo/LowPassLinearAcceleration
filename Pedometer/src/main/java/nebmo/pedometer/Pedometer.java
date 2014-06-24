@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Queue;
 
 //http://www.analog.com/static/imported-files/tech_articles/pedometer.pdf
-public class Pedometer implements IPedometer {
+public class Pedometer extends StepsCounterBase implements IPedometer {
 	private List<AccelerationInfo> _arrInfo;
 
 	private double[] new_value = new double[4];
@@ -16,15 +16,7 @@ public class Pedometer implements IPedometer {
 	private double max_value;
 	private double threshold;
 	private double precision = 0.1d;
-	private int _steps;
 	private long lastStep;
-	public Pedometer(){
-
-	}
-	public Pedometer(List<AccelerationInfo> arrInfo)
-	{
-		_arrInfo = arrInfo;
-	}
 
 	@Override
 	public void onInput(AccelerationInfo info){
@@ -49,8 +41,8 @@ public class Pedometer implements IPedometer {
 		if(old_value[0] > threshold && threshold > new_value[0]){
 			long timediff = info.time - lastStep;
 			if(timediff > 200){
-				_steps++;
 				lastStep = info.time;
+				addStep(info.time);
 			}
 		}
 
@@ -59,6 +51,11 @@ public class Pedometer implements IPedometer {
 	@Override
 	public int getSteps(){
 		return _steps;
+	}
+
+	@Override
+	public int getCadense() {
+		return super.getCadense();
 	}
 }
 

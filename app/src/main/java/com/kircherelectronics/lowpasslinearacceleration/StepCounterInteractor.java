@@ -11,6 +11,8 @@ public interface StepCounterInteractor {
 	void registerOnStepsCountedListener(OnStepsCountedListener listener);
 	void unregisterOnStepsCountedListener(OnStepsCountedListener listener);
 	long getCountedSteps();
+	int getCadense();
+	int getAvgCadense();
 	AccelerationInfo getAccelerationInfo();
 	boolean isListening();
 }

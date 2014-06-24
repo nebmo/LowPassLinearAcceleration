@@ -11,6 +11,7 @@ import java.util.List;
 
 import nebmo.pedometer.AccelerationInfo;
 import nebmo.pedometer.Pedometer;
+import nebmo.pedometer.StepsCounterBase;
 
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -62,25 +63,26 @@ public class PedometerTest {
 		assertThat(a.wz, is(equalTo(expectedwZ)));
 	}
 
-	/*@Test
+	@Test
 	 public void runFile1() throws IOException {
 		Pedometer pedometer = new Pedometer();
-		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-50.csv");
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-run-50.csv");
+		int i = 0;
 		for(AccelerationInfo info : arrAccelerationInfo){
-			pedometer.onInput(info);
+				pedometer.onInput(info);
 		}
-		assertThat(pedometer.getSteps(), is(equalTo(3)));
+		assertThat(pedometer.getSteps(), is(equalTo(50)));
 	}
 
 	@Test
-	public void runFile2() throws IOException {
+	public void runFile() throws IOException {
 		Pedometer pedometer = new Pedometer();
-		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter_60.csv");
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-25hz-50steg.csv");
 		for(AccelerationInfo info : arrAccelerationInfo){
 			pedometer.onInput(info);
 		}
-		assertThat(pedometer.getSteps(), is(equalTo(3)));
-	}*/
+		assertThat(pedometer.getSteps(), is(equalTo(50)));
+	}
 
 	@Test
 	public void runFile2() throws IOException {
@@ -90,6 +92,49 @@ public class PedometerTest {
 			pedometer.onInput(info);
 		}
 		assertThat(pedometer.getSteps(), is(equalTo(60)));
+	}
+
+	@Test
+	public void runFile3() throws IOException {
+		Pedometer pedometer = new Pedometer();
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-lefthand-run-10.csv");
+		for(AccelerationInfo info : arrAccelerationInfo){
+			pedometer.onInput(info);
+		}
+		assertThat(pedometer.getSteps(), is(equalTo(10)));
+	}
+
+	@Test
+	public void runFile4() throws IOException {
+		Pedometer pedometer = new Pedometer();
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-lefthand-run-20.csv");
+		for(AccelerationInfo info : arrAccelerationInfo){
+			pedometer.onInput(info);
+		}
+		assertThat(pedometer.getSteps(), is(equalTo(20)));
+	}
+	@Test
+	public void runFile5() throws IOException {
+		Pedometer pedometer = new Pedometer();
+		List<AccelerationInfo> arrAccelerationInfo = readFile("AccelerationFilter-walk-hand-30.csv");
+		for(AccelerationInfo info : arrAccelerationInfo){
+			pedometer.onInput(info);
+		}
+		assertThat(pedometer.getSteps(), is(equalTo(30)));
+	}
+
+	@Test
+	public void calcAvgSteps()
+	{
+		StepsCounterBase stepsCounterBase = new StepsCounterBase();
+		stepsCounterBase.addStep(1000);
+		stepsCounterBase.addStep(2000);
+		stepsCounterBase.addStep(3000);
+		stepsCounterBase.addStep(4000);
+		stepsCounterBase.addStep(5000);
+		stepsCounterBase.addStep(6000);
+		assertThat(stepsCounterBase.getAvgTimeBetweenSteps(), is(equalTo(1000.0)));
+		assertThat(stepsCounterBase.getAvgCadense(), is(equalTo(60)));
 	}
 
 }

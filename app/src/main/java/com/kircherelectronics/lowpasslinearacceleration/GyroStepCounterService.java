@@ -8,11 +8,9 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.IBinder;
-import android.util.Log;
 
 import com.kircherelectronics.lowpasslinearacceleration.filter.LPFAndroidDeveloper;
 import com.kircherelectronics.lowpasslinearacceleration.filter.LPFWikipedia;
-import com.kircherelectronics.lowpasslinearacceleration.filter.LowPassFilter;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -20,38 +18,27 @@ import java.util.Set;
 import nebmo.pedometer.AccelerationInfo;
 import nebmo.pedometer.Pedometer;
 
-
 /**
- * Created by niklas.weidemann on 2014-06-17.
+ * Created by niklas.weidemann on 2014-06-21.
  */
-public class StepCounterService extends Service implements StepCounterInteractor {
+public class GyroStepCounterService extends Service implements StepCounterInteractor {
+
 	private long _lastPublishedSensoreventTime;
 	public AccelerationInfo _sensorInfo;
 	private int _eventFrequency = 25;
-	private final Set<OnStepsCountedListener> mListeners = new HashSet<OnStepsCountedListener>();
-	private final IBinder mBinder = new StepServiceBinder();
-	private SensorManager mSensorManager;
-	private long mStepsCounted;
+	private LPFWikipedia lpfWiki;
 	private boolean mIsListening;
-	// Outputs for the acceleration and LPFs
+	private int mStepsCounted;
+	private SensorManager mSensorManager;
 	private float[] acceleration = new float[3];
 	private float[] lpfWikiOutput = new float[4];
-	private float[] lpfAndDevOutput = new float[3];
-	// Low-Pass Filters
-	private LowPassFilter lpfWiki;
-	private LowPassFilter lpfAndDev;
-
+	private final Set<OnStepsCountedListener> mListeners = new HashSet<OnStepsCountedListener>();
+	private final IBinder mBinder = new StepServiceBinder();
+	private Pedometer _pedometer;
 	// The static alpha for the LPF Wikipedia
 	private static float WIKI_STATIC_ALPHA = 0.1f;
 	// The static alpha for the LPF Android Developer
 	private static float AND_DEV_STATIC_ALPHA = 0.9f;
-
-	// Indicate if a static alpha should be used for the LPF Wikipedia
-	private boolean staticWikiAlpha = false;
-
-	// Indicate if a static alpha should be used for the LPF Android Developer
-	private boolean staticAndDevAlpha = false;
-	private Pedometer _pedometer;
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
@@ -62,7 +49,7 @@ public class StepCounterService extends Service implements StepCounterInteractor
 	public void onCreate() {
 		super.onCreate();
 		lpfWiki = new LPFWikipedia();
-		lpfAndDev = new LPFAndroidDeveloper();
+
 		mIsListening = false;
 		mStepsCounted = 0;
 
@@ -80,7 +67,7 @@ public class StepCounterService extends Service implements StepCounterInteractor
 		if (mIsListening)
 			return;
 
-		final Sensor sensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		final Sensor sensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 		mSensorManager.registerListener(mSensorEventListener, sensor, SensorManager.SENSOR_DELAY_FASTEST);
 		mIsListening = true;
 	}
@@ -97,7 +84,6 @@ public class StepCounterService extends Service implements StepCounterInteractor
 			acceleration[2] = acceleration[2] / SensorManager.GRAVITY_EARTH;
 
 			lpfWikiOutput = lpfWiki.addSamples(acceleration);
-			lpfAndDevOutput = lpfAndDev.addSamples(acceleration);
 
 			_sensorInfo = new AccelerationInfo();
 			_sensorInfo.x = acceleration[0];
@@ -117,7 +103,7 @@ public class StepCounterService extends Service implements StepCounterInteractor
 					notifyStepsChanged();
 				}
 
-                _lastPublishedSensoreventTime = event.timestamp;
+				_lastPublishedSensoreventTime = event.timestamp;
 			}
 		}
 
@@ -133,14 +119,11 @@ public class StepCounterService extends Service implements StepCounterInteractor
 	private void initFilters() {
 		// Create the low-pass filters
 		lpfWiki = new LPFWikipedia();
-		lpfAndDev = new LPFAndroidDeveloper();
 
 		// Initialize the low-pass filters with the saved prefs
-		lpfWiki.setAlphaStatic(staticWikiAlpha);
+		lpfWiki.setAlphaStatic(false);
 		lpfWiki.setAlpha(WIKI_STATIC_ALPHA);
 
-		lpfAndDev.setAlphaStatic(staticAndDevAlpha);
-		lpfAndDev.setAlpha(AND_DEV_STATIC_ALPHA);
 	}
 
 	private void notifyStepsChanged() {
@@ -191,12 +174,12 @@ public class StepCounterService extends Service implements StepCounterInteractor
 
 	@Override
 	public int getCadense() {
-		return _pedometer.getCadense();
+		return 0;
 	}
 
 	@Override
 	public int getAvgCadense() {
-		return _pedometer.getAvgCadense();
+		return 0;
 	}
 
 	@Override
@@ -211,8 +194,7 @@ public class StepCounterService extends Service implements StepCounterInteractor
 
 	public class StepServiceBinder extends Binder {
 		public StepCounterInteractor getStepInteractor() {
-			return StepCounterService.this;
+			return GyroStepCounterService.this;
 		}
 	}
 }
-
